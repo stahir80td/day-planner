@@ -18,6 +18,7 @@ function App() {
     startTime: '09:00',
     endTime: '20:00',
     interests: [],
+    customInterests: '',
     pace: 'moderate',
     budget: 'mid',
     walking: 'normal'
@@ -44,9 +45,19 @@ function App() {
     setIsGenerating(true);
     setError(null);
 
+    // Combine selected interests with custom interests
+    const allInterests = [...formData.interests];
+    if (formData.customInterests.trim()) {
+      allInterests.push(formData.customInterests);
+    }
+
     const prompt = `Create a day itinerary for ${formData.city} from ${formData.startTime} to ${formData.endTime}.
-Interests: ${formData.interests.join(', ')}
+Interests: ${allInterests.join(', ')}
 Pace: ${formData.pace}
+Budget: ${formData.budget}
+Walking capability: ${formData.walking}
+
+Important: If user mentions specific dietary requirements (Halal, Kosher, Vegan, etc.) or religious places (Mosques, Churches, etc.), prioritize including relevant options.
 
 Return ONLY valid JSON array (no markdown):
 [
@@ -54,7 +65,7 @@ Return ONLY valid JSON array (no markdown):
   {"time": "11:00 AM", "type": "transit", "method": "Walk", "duration": "15 min", "distance": "1 km"}
 ]
 
-Include 4-6 activities. Types: museum, food, landmark, nature, shopping`;
+Include 4-6 activities. Types: museum, food, landmark, nature, shopping, religious, cultural`;
 
     try {
       const response = await fetch(
@@ -177,7 +188,9 @@ Return ONLY JSON:
       landmark: Landmark,
       nature: Trees,
       shopping: ShoppingBag,
-      nightlife: Moon
+      nightlife: Moon,
+      religious: MapPin,
+      cultural: Building2
     };
     return icons[type] || MapPin;
   };
@@ -189,7 +202,9 @@ Return ONLY JSON:
       landmark: 'from-blue-500 to-blue-600',
       nature: 'from-green-500 to-green-600',
       shopping: 'from-pink-500 to-pink-600',
-      nightlife: 'from-indigo-500 to-indigo-600'
+      nightlife: 'from-indigo-500 to-indigo-600',
+      religious: 'from-teal-500 to-teal-600',
+      cultural: 'from-rose-500 to-rose-600'
     };
     return colors[type] || 'from-gray-500 to-gray-600';
   };
@@ -215,6 +230,11 @@ Return ONLY JSON:
   const getMapUrl = (activityName, city) => {
     const query = encodeURIComponent(`${activityName}, ${city}`);
     return `https://www.google.com/maps?q=${query}&output=embed`;
+  };
+
+  // Check if user has provided enough interests (either selected or custom text)
+  const hasValidInterests = () => {
+    return formData.interests.length > 0 || formData.customInterests.trim().length > 0;
   };
 
   if (currentStep === 0) {
@@ -403,7 +423,7 @@ Return ONLY JSON:
               <div className="space-y-6">
                 <div className="space-y-2">
                   <h2 className="text-3xl font-bold text-white">Customize your day</h2>
-                  <p className="text-gray-400">What interests you? (Pick 2-4)</p>
+                  <p className="text-gray-400">What interests you? (Optional)</p>
                 </div>
 
                 {showApiKeyInput && (
@@ -456,6 +476,22 @@ Return ONLY JSON:
                       <span className="text-xs font-medium text-center">{label}</span>
                     </button>
                   ))}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-300">
+                    Specific interests or requirements (Optional)
+                  </label>
+                  <textarea
+                    placeholder="E.g., Halal food, Mosques, Vegan restaurants, Kid-friendly activities, Wheelchair accessible..."
+                    value={formData.customInterests}
+                    onChange={(e) => setFormData({ ...formData, customInterests: e.target.value })}
+                    rows={3}
+                    className="w-full px-4 py-3 bg-gray-700 border-2 border-gray-600 rounded-xl focus:border-blue-500 focus:outline-none text-white placeholder-gray-400 resize-none"
+                  />
+                  <p className="text-xs text-gray-500">
+                    Add any specific requirements or places you'd like to visit
+                  </p>
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-gray-700">
@@ -519,7 +555,7 @@ Return ONLY JSON:
 
                 <button
                   onClick={generateItinerary}
-                  disabled={formData.interests.length < 2 || isGenerating}
+                  disabled={!hasValidInterests() || isGenerating}
                   className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 disabled:cursor-not-allowed text-white py-4 rounded-xl font-semibold text-lg transition-colors flex items-center justify-center gap-2"
                 >
                   {isGenerating ? (
@@ -534,6 +570,12 @@ Return ONLY JSON:
                     </>
                   )}
                 </button>
+                
+                {!hasValidInterests() && (
+                  <p className="text-center text-sm text-gray-500">
+                    Select at least one interest or add custom requirements
+                  </p>
+                )}
               </div>
             )}
           </div>
